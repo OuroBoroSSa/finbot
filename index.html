@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Финансы</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #111418);
+    --bg2: var(--tg-theme-secondary-bg-color, #1b2027);
+    --text: var(--tg-theme-text-color, #eef1f4);
+    --hint: var(--tg-theme-hint-color, #8a94a3);
+    --link: var(--tg-theme-link-color, #4ea4f6);
+    --btn: var(--tg-theme-button-color, #3390ec);
+    --btn-text: var(--tg-theme-button-text-color, #ffffff);
+    --good: #2fb36a;
+    --bad: #e5534b;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { padding: 12px 12px 90px; max-width: 560px; margin: 0 auto; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--hint);
+    margin: 22px 4px 8px; font-weight: 600; }
+  .card { background: var(--bg2); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; }
+  .row + .row { border-top: 1px solid rgba(127,127,127,.15); }
+  .row .l { color: var(--hint); }
+  .row .v { text-align: right; font-variant-numeric: tabular-nums; white-space: pre-line; }
+  .muted { color: var(--hint); font-size: 13px; }
+  .big { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .note { white-space: pre-line; font-size: 14px; }
+  .bar { height: 6px; border-radius: 3px; background: rgba(127,127,127,.25); overflow: hidden; margin-top: 6px; }
+  .bar > i { display: block; height: 100%; background: var(--btn); }
+
+  /* Альтиметр */
+  .alt { display: flex; justify-content: center; align-items: center; gap: 1px; margin: 6px 0 2px;
+    font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; height: 1.2em; }
+  .alt .d { display: inline-block; height: 1.2em; overflow: hidden; width: .62em; text-align: center;
+    background: rgba(0,0,0,.25); border-radius: 6px; margin: 0 1px; }
+  .alt .d > span { display: block; will-change: transform; }
+  .alt .d > span > b { display: block; height: 1.2em; line-height: 1.2em; font-weight: 700; }
+  .alt .s { min-width: .25em; text-align: center; }
+  .alt .cents { font-size: .62em; align-self: flex-end; margin-bottom: .18em; }
+  .alt .cents .d { width: .62em; }
+
+  /* Вкладки */
+  nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: var(--bg2);
+    border-top: 1px solid rgba(127,127,127,.2); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
+  nav button { flex: 1; background: none; border: 0; color: var(--hint); padding: 8px 0 10px; font-size: 11px; }
+  nav button span { display: block; font-size: 20px; line-height: 1.3; }
+  nav button.on { color: var(--link); }
+  section { display: none; }
+  section.on { display: block; }
+
+  /* Формы */
+  details { background: var(--bg2); border-radius: var(--radius); margin-bottom: 10px; }
+  summary { padding: 14px; cursor: pointer; font-weight: 600; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "›"; float: right; color: var(--hint); transition: transform .2s; }
+  details[open] summary::after { transform: rotate(90deg); }
+  form { padding: 0 14px 14px; display: grid; gap: 8px; }
+  label { font-size: 12px; color: var(--hint); display: grid; gap: 4px; }
+  input, select { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid rgba(127,127,127,.3);
+    background: var(--bg); color: var(--text); font-size: 16px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  button.go { background: var(--btn); color: var(--btn-text); border: 0; border-radius: 10px;
+    padding: 12px; font-size: 15px; font-weight: 600; }
+  button.go:disabled { opacity: .5; }
+  button.mini { background: none; border: 1px solid var(--link); color: var(--link); border-radius: 8px;
+    padding: 4px 10px; font-size: 13px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { background: var(--bg); color: var(--text); border: 1px solid rgba(127,127,127,.3);
+    border-radius: 16px; padding: 5px 10px; font-size: 13px; }
+  .chips button.on { border-color: var(--btn); background: var(--btn); color: var(--btn-text); }
+
+  .item { padding: 10px 0; }
+  .item + .item { border-top: 1px solid rgba(127,127,127,.15); }
+  .item .top { display: flex; justify-content: space-between; gap: 8px; }
+  .item .name { font-weight: 600; }
+
+  #toast { position: fixed; left: 12px; right: 12px; bottom: 80px; background: #222a33; color: #fff;
+    padding: 12px 14px; border-radius: 12px; white-space: pre-line; box-shadow: 0 6px 24px rgba(0,0,0,.35);
+    transform: translateY(160%); transition: transform .3s; z-index: 10; max-width: 536px; margin: 0 auto; }
+  #toast.show { transform: none; }
+  #toast.err { background: #5a1f1f; }
+  #loading { text-align: center; padding: 60px 20px; color: var(--hint); }
+  .upd { text-align: center; font-size: 12px; color: var(--hint); margin-top: 16px; }
+  a { color: var(--link); }
+</style>
+</head>
+<body>
+<main>
+  <div id="loading">Загружаю данные…</div>
+
+  <!-- ГЛАВНАЯ -->
+  <section id="tab-home">
+    <div class="card" style="text-align:center">
+      <div class="muted">Всего на счетах</div>
+      <div class="alt" id="alt"></div>
+      <div class="muted" id="altSub"></div>
+    </div>
+
+    <div class="card">
+      <div class="muted" id="monthName"></div>
+      <div class="big" id="left"></div>
+      <div class="muted">можно ещё потратить</div>
+      <div class="bar"><i id="usedBar"></i></div>
+      <div id="monthRows" style="margin-top:8px"></div>
+    </div>
+    <div class="card note" id="advice" hidden></div>
+
+    <details open>
+      <summary>➖ Трата</summary>
+      <form data-action="expense">
+        <div class="two">
+          <label>Сумма, $<input name="amount" inputmode="decimal" required placeholder="0"></label>
+          <label>Счёт<select name="account" data-list="accExp"></select></label>
+        </div>
+        <label>Категория<div class="chips" data-chips="category"></div></label>
+        <input type="hidden" name="category">
+        <label>Комментарий<input name="comment" placeholder="необязательно"></label>
+        <button class="go">Записать трату</button>
+      </form>
+    </details>
+
+    <details>
+      <summary>➕ Доход</summary>
+      <form data-action="income">
+        <div class="two">
+          <label>Сумма, $<input name="amount" inputmode="decimal" required></label>
+          <label>Тип<select name="type"><option>Зарплата</option><option>Аванс</option><option selected>Другое</option></select></label>
+        </div>
+        <label>Счёт<select name="account" data-list="acc"></select></label>
+        <label>Комментарий<input name="comment"></label>
+        <button class="go">Записать доход</button>
+      </form>
+    </details>
+
+    <h2>Траты по категориям</h2>
+    <div class="card" id="cats"></div>
+
+    <h2>Последние траты</h2>
+    <div class="card" id="recent"></div>
+  </section>
+
+  <!-- СЧЕТА -->
+  <section id="tab-money">
+    <h2>Счета</h2>
+    <div class="card" id="accounts"></div>
+
+    <details>
+      <summary>💳 Записать остатки</summary>
+      <form data-action="balances">
+        <label>Карта Румыния<input name="r" inputmode="decimal" required></label>
+        <label>Карта Таня<input name="t" inputmode="decimal" required></label>
+        <label>Наличные<input name="c" inputmode="decimal" required></label>
+        <button class="go">Записать</button>
+      </form>
+    </details>
+
+    <details>
+      <summary>🔧 Поправить один счёт</summary>
+      <form data-action="correction">
+        <label>Счёт<select name="account" data-list="accTr"></select></label>
+        <label>Сколько на самом деле<input name="actual" inputmode="decimal" required></label>
+        <button class="go">Поправить</button>
+      </form>
+    </details>
+
+    <details>
+      <summary>🔁 Перевод между счетами</summary>
+      <form data-action="transfer">
+        <div class="two">
+          <label>Откуда<select name="from" data-list="accTr"></select></label>
+          <label>Куда<select name="to" data-list="accTr" data-default="1"></select></label>
+        </div>
+        <div class="two">
+          <label>Отправил<input name="sent" inputmode="decimal" required></label>
+          <label>Пришло<input name="received" inputmode="decimal" placeholder="столько же"></label>
+        </div>
+        <button class="go">Записать перевод</button>
+      </form>
+    </details>
+  </section>
+
+  <!-- ЦЕЛИ -->
+  <section id="tab-goals">
+    <h2>Конверты</h2>
+    <div class="card" id="envelopes"></div>
+    <div class="card note" id="envText" hidden></div>
+    <details>
+      <summary>📦 Закрепить / открепить</summary>
+      <form data-action="envelope">
+        <label>Конверт<select name="name" data-list="envNames"></select></label>
+        <label>Сумма, $ (минус — открепить)<input name="amount" inputmode="decimal" required></label>
+        <label>Комментарий<input name="comment"></label>
+        <button class="go">Записать</button>
+      </form>
+    </details>
+
+    <h2>Желания</h2>
+    <div class="card" id="wishes"></div>
+    <div class="card note" id="wishText" hidden></div>
+    <details>
+      <summary>⭐ Новое желание</summary>
+      <form data-action="wishAdd">
+        <label>Что хочу<input name="name" required></label>
+        <label>Цена, $<input name="price" inputmode="decimal" required></label>
+        <button class="go">Добавить</button>
+      </form>
+    </details>
+
+    <h2>Копилка</h2>
+    <div class="card" id="piggy"></div>
+    <details>
+      <summary>🐷 Положить / взять</summary>
+      <form data-action="piggyPut">
+        <label>Цель<select name="name" data-list="piggyNames"></select></label>
+        <label>Сумма, $ (минус — взять)<input name="amount" inputmode="decimal" required></label>
+        <button class="go">Записать</button>
+      </form>
+    </details>
+    <details>
+      <summary>🎯 Новая цель</summary>
+      <form data-action="piggyAdd">
+        <label>Название<input name="name" required></label>
+        <label>Цена, $<input name="price" inputmode="decimal" required></label>
+        <button class="go">Добавить</button>
+      </form>
+    </details>
+  </section>
+
+  <!-- АКЦИИ -->
+  <section id="tab-stocks">
+    <h2>Портфель</h2>
+    <div class="card" id="portfolio"></div>
+    <h2>Акции</h2>
+    <div class="card" id="stocks"></div>
+    <h2>Цели по дивидендам</h2>
+    <div class="card" id="milestones"></div>
+
+    <details>
+      <summary>🛒 Купил акции</summary>
+      <form data-action="buy">
+        <label>Тикер<select name="ticker" data-list="tickers"></select></label>
+        <div class="two">
+          <label>Количество<input name="qty" inputmode="decimal" required></label>
+          <label>Цена, $<input name="price" inputmode="decimal" placeholder="из таблицы"></label>
+        </div>
+        <label>Комиссия, $<input name="fee" inputmode="decimal" placeholder="0"></label>
+        <button class="go">Записать покупку</button>
+      </form>
+    </details>
+    <details>
+      <summary>🏦 Перевёл брокеру</summary>
+      <form data-action="broker">
+        <label>Сумма, $<input name="amount" inputmode="decimal" required></label>
+        <label>С какого счёта<select name="account" data-list="acc"></select></label>
+        <button class="go">Записать</button>
+      </form>
+    </details>
+    <details>
+      <summary>💵 Пришли дивиденды</summary>
+      <form data-action="dividend">
+        <label>Сумма, $<input name="amount" inputmode="decimal" required></label>
+        <label>Тикер<select name="ticker" data-list="tickersOpt"></select></label>
+        <button class="go">Записать</button>
+      </form>
+    </details>
+    <details>
+      <summary>💼 Кэш у брокера</summary>
+      <form data-action="brokerCash">
+        <label>Сколько свободно сейчас, $<input name="actual" inputmode="decimal" required></label>
+        <button class="go">Поправить</button>
+      </form>
+    </details>
+    <details>
+      <summary>🔧 Поправить количество акций</summary>
+      <form data-action="portfolioFix">
+        <label>Тикер<select name="ticker" data-list="tickers"></select></label>
+        <label>Сколько штук на самом деле<input name="qty" inputmode="decimal" required></label>
+        <button class="go">Поправить</button>
+      </form>
+    </details>
+    <div class="card" id="invest"></div>
+  </section>
+
+  <!-- РЕЙС -->
+  <section id="tab-rejs">
+    <h2>Контракт</h2>
+    <div class="card" id="contract"></div>
+    <h2>Счёт компании</h2>
+    <div class="card" id="company"></div>
+
+    <h2 id="pendingH" hidden>Ждут поступления</h2>
+    <div class="card" id="pending" hidden></div>
+
+    <details>
+      <summary>💰 Начисление зарплаты</summary>
+      <form data-action="accrual">
+        <label>Сколько начислили, $<input name="amount" inputmode="decimal" required></label>
+        <button class="go">Записать</button>
+      </form>
+    </details>
+    <details>
+      <summary>📤 Перевести с счёта компании</summary>
+      <form data-action="distribute">
+        <div class="two">
+          <label>Семье, $<input name="family" inputmode="decimal"></label>
+          <label>На акции, $<input name="stocks" inputmode="decimal"></label>
+        </div>
+        <button class="go">Отправить</button>
+      </form>
+    </details>
+    <details>
+      <summary>➕ Возмещение / бонус</summary>
+      <form data-action="companyIn">
+        <div class="two">
+          <label>Тип<select name="type"><option>Возмещение</option><option>Бонус</option></select></label>
+          <label>Сумма, $<input name="amount" inputmode="decimal" required></label>
+        </div>
+        <label>Комментарий<input name="comment"></label>
+        <button class="go">Записать</button>
+      </form>
+    </details>
+    <details>
+      <summary>🚢 Трата на судне</summary>
+      <form data-action="shipExpense">
+        <label>Сумма, $<input name="amount" inputmode="decimal" required></label>
+        <label>Комментарий<input name="comment"></label>
+        <button class="go">Записать</button>
+      </form>
+    </details>
+    <details>
+      <summary>📝 Начало контракта</summary>
+      <form data-action="contractStart">
+        <label>Дата<input name="date" type="date" required></label>
+        <div class="two">
+          <label>Месяцев<input name="months" inputmode="decimal" required></label>
+          <label>Зарплата, $/мес<input name="salary" inputmode="decimal" required></label>
+        </div>
+        <button class="go">Записать</button>
+      </form>
+    </details>
+    <details>
+      <summary>🏁 Конец контракта</summary>
+      <form data-action="contractEnd" data-confirm="Закрыть активный контракт?">
+        <label>Дата<input name="date" type="date" required></label>
+        <button class="go">Закрыть контракт</button>
+      </form>
+    </details>
+    <details>
+      <summary>🏖 План на море в год</summary>
+      <form data-action="seaPlan">
+        <label>Сумма, $<input name="amount" inputmode="decimal" required></label>
+        <button class="go">Сохранить</button>
+      </form>
+    </details>
+
+    <h2>Операции</h2>
+    <div class="card" id="companyOps"></div>
+    <h2>Все контракты</h2>
+    <div class="card" id="contracts"></div>
+  </section>
+
+  <!-- ОТЧЁТ -->
+  <section id="tab-report">
+    <h2 id="reportTitle">Отчёт</h2>
+    <div class="card" id="report"></div>
+    <div class="card"><a id="sheetLink" target="_blank">Открыть таблицу</a></div>
+  </section>
+
+  <div class="upd" id="upd"></div>
+</main>
+
+<nav>
+  <button data-tab="home"><span>🏠</span>Главная</button>
+  <button data-tab="money"><span>💳</span>Счета</button>
+  <button data-tab="goals"><span>🎯</span>Цели</button>
+  <button data-tab="stocks"><span>📈</span>Акции</button>
+  <button data-tab="rejs"><span>🚢</span>Рейс</button>
+  <button data-tab="report"><span>📅</span>Отчёт</button>
+</nav>
+<div id="toast"></div>
+
+<script>
+/* ↓↓↓ Адрес развёртывания Apps Script (заканчивается на /exec) ↓↓↓ */
+const API_URL = 'https://script.google.com/macros/s/AKfycbxQ6vD3oasY70WnQQ6X5ZzHz9bMaOzazdBZkXCQ2TKCyADD8QdzGHIRJaVdJkG7EKL8pA/exec';
+
+const tg = window.Telegram && Telegram.WebApp;
+const ACC = ['Карта Румыния', 'Карта Таня', 'Наличные'];
+const ACC_TR = ACC.concat(['Счёт EUR']);
+const ACC_EXP = ACC_TR.concat(['Счёт компании']);
+let S = null;
+let altValue = null;
+
+/* ── помощники ── */
+const $ = id => document.getElementById(id);
+const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function num(v) {
+  if (typeof v === 'number') return v;
+  const s = String(v || '').replace(/[\s  $€%]/g, '').replace(/−/g, '-').replace(',', '.');
+  return parseFloat(s);
+}
+const rows = pairs => pairs.filter(p => p[1] !== '').map(p => `<div class="row"><span class="l">${esc(p[0])}</span><span class="v">${esc(p[1])}</span></div>`).join('') || '<div class="muted">Пусто</div>';
+const row = (l, v) => v === '' || v == null ? '' : `<div class="row"><span class="l">${esc(l)}</span><span class="v">${esc(v)}</span></div>`;
+const pick = (pairs, prefix) => { const p = (pairs || []).find(x => x[0].indexOf(prefix) === 0); return p ? p[1] : ''; };
+const empty = t => `<div class="muted">${t}</div>`;
+
+function toast(text, err) {
+  const t = $('toast');
+  t.textContent = text;
+  t.className = 'show' + (err ? ' err' : '');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.className = err ? 'err' : '', err ? 6000 : 4000);
+}
+
+async function api(action, payload) {
+  if (API_URL.indexOf('PASTE') === 0) /* not set */ throw new Error('В index.html не вписан адрес Apps Script (API_URL)');
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action, payload: payload || {}, initData: tg ? tg.initData : '' }),
+  });
+  const j = await res.json();
+  if (!j.ok) throw new Error(j.error || 'Ошибка');
+  return j.data;
+}
+
+/* ── альтиметр: барабаны крутятся, как на счётчике ── */
+function altimeter(value) {
+  const box = $('alt');
+  const neg = value < 0;
+  const v = Math.abs(value);
+  const intStr = Math.floor(v + 1e-9).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  const head = (neg ? '−' : '') + '$' + intStr;
+  if (box.dataset.sig !== head.length + '') {
+    const col = () => `<span class="d"><span>${'01234567890'.split('').map(d => `<b>${d}</b>`).join('')}</span></span>`;
+    box.innerHTML = head.split('').map(c => /\d/.test(c) ? col() : `<span class="s">${c === ' ' ? '' : c}</span>`).join('') +
+      `<span class="s">,</span><span class="cents" style="display:flex">${col()}${col()}</span>`;
+    box.dataset.sig = head.length + '';
+  }
+  const cols = box.querySelectorAll('.d > span');
+  const cents = Math.round(v * 100 * 1000) / 1000;
+  cols.forEach((s, i) => {
+    const place = Math.pow(10, cols.length - 1 - i);
+    const q = cents / place;
+    let pos = Math.floor(q) % 10;
+    const frac = q - Math.floor(q);
+    if (i === cols.length - 1) pos += frac;
+    else if (frac > 0.9 && (cents % place) / place > 0.9) pos += (frac - 0.9) * 10;
+    s.style.transform = `translateY(-${pos * 1.2}em)`;
+  });
+}
+function runAltimeter(target) {
+  if (isNaN(target)) { $('alt').textContent = '—'; return; }
+  const from = altValue == null ? Math.max(0, target - Math.min(Math.abs(target) * 0.05, 500)) : altValue;
+  altValue = target;
+  const t0 = performance.now(), dur = 2200;
+  (function step(t) {
+    const k = Math.min(1, (t - t0) / dur);
+    const e = 1 - Math.pow(1 - k, 3);
+    altimeter(from + (target - from) * e);
+    if (k < 1) requestAnimationFrame(step);
+  })(t0);
+}
+
+/* ── отрисовка ── */
+function fillSelect(sel, list, keep) {
+  const prev = sel.value;
+  sel.innerHTML = list.map(v => `<option value="${esc(v)}">${esc(v === '' ? '— без тикера —' : v)}</option>`).join('');
+  if (keep && list.indexOf(prev) >= 0) sel.value = prev;
+  else if (sel.dataset.default) sel.selectedIndex = Math.min(Number(sel.dataset.default), list.length - 1);
+}
+
+function render() {
+  const m = S.month;
+  $('monthName').textContent = (m.title || m.name || 'Этот месяц');
+  $('left').textContent = m.left || '—';
+  const used = num(m.used);
+  $('usedBar').style.width = (isNaN(used) ? 0 : Math.max(0, Math.min(100, used > 1.5 ? used : used * 100))) + '%';
+  $('monthRows').innerHTML = row('Потрачено', m.spent) + row('Бюджет трат', m.budget) + row('Использовано', m.used) +
+    row('Пришло', m.income) + row('На акции', m.stocks) + row('На судне', m.ship) + row('Из конвертов', m.fromEnv) + row('Проверка', m.check);
+  $('advice').hidden = !m.advice;
+  $('advice').textContent = m.advice || '';
+
+  runAltimeter(num(S.money.total));
+  $('altSub').textContent = [S.money.rate ? 'курс EUR ' + S.money.rate : '', S.money.lastCheck ? 'сверка: ' + S.money.lastCheck : ''].filter(Boolean).join(' · ');
+
+  $('cats').innerHTML = S.categories.length ? S.categories.map(c => row(c.name, [c.sum, c.share].filter(Boolean).join(' · '))).join('') : empty('Пока трат нет');
+
+  const last = S.recent[0];
+  $('recent').innerHTML = S.recent.length ? S.recent.map((r, i) => `<div class="item"><div class="top"><span class="name">${esc(r.amount)} · ${esc(r.category)}</span>${i === 0 ? '<button class="mini" id="undo">Удалить</button>' : ''}</div><div class="muted">${esc(r.date)} · ${esc(r.account)}${r.comment ? ' · ' + esc(r.comment) : ''}</div></div>`).join('') : empty('Пусто');
+  if (last) $('undo').onclick = () => act('undoExpense', { expect: { row: last.row, date: last.date } }, 'Удалить трату ' + last.amount + ' — ' + last.category + '?');
+
+  $('accounts').innerHTML = S.money.accounts.map(a => row(a.name, a.value + (a.usd ? '\n≈ ' + a.usd : ''))).join('') + row('Итого', S.money.total);
+
+  $('envelopes').innerHTML = S.envelopes.length ? S.envelopes.map(e => {
+    const p = num(e.now) / num(e.goal);
+    return `<div class="item"><div class="top"><span class="name">${esc(e.name)}</span><span>${esc(e.now)} / ${esc(e.goal)}</span></div>
+      ${isFinite(p) ? `<div class="bar"><i style="width:${Math.max(0, Math.min(100, p * 100))}%"></i></div>` : ''}
+      <div class="muted">${[e.pinned ? 'закреплено ' + e.pinned : '', e.plan ? 'план ' + e.plan : ''].filter(Boolean).join(' · ')}</div></div>`;
+  }).join('') + (S.envAlloc.length ? '<div style="margin-top:8px">' + rows(S.envAlloc) + '</div>' : '') : empty('Конвертов нет');
+  $('envText').hidden = !S.envText; $('envText').textContent = S.envText || '';
+
+  $('wishes').innerHTML = S.wishes.length ? S.wishes.map(w => `<div class="item"><div class="top"><span class="name">${esc(w.name)}</span><span>${esc(w.price)}</span></div>
+    <div class="top"><span class="muted">${esc([w.status, w.date, w.months ? 'через ' + w.months : ''].filter(Boolean).join(' · '))}</span>
+    ${String(w.status).trim() === 'куплено' ? '' : `<button class="mini" data-wish="${w.row}">Купил</button>`}</div></div>`).join('') : empty('Желаний нет');
+  $('wishText').hidden = !S.wishText; $('wishText').textContent = S.wishText || '';
+  document.querySelectorAll('[data-wish]').forEach(b => b.onclick = () => buyWish(Number(b.dataset.wish)));
+
+  $('piggy').innerHTML = S.piggy.length ? S.piggy.map(p => `<div class="item"><div class="top"><span class="name">${esc(p.name)}</span><span>${esc(p.saved)} / ${esc(p.price)}</span></div>
+    <div class="bar"><i style="width:${Math.max(0, Math.min(100, num(p.pct) > 1.5 ? num(p.pct) : num(p.pct) * 100)) || 0}%"></i></div>
+    <div class="muted">${esc([p.pct, p.months ? 'ещё ' + p.months + ' мес.' : ''].filter(Boolean).join(' · '))}</div></div>`).join('') : empty('Целей нет');
+
+  $('portfolio').innerHTML = rows(S.portfolio);
+  $('stocks').innerHTML = S.stocks.length ? S.stocks.map(s => `<div class="item"><div class="top"><span class="name">${esc(s.ticker)}</span><span>${esc(s.have)} / ${esc(s.target)} шт.</span></div>
+    <div class="bar"><i style="width:${Math.max(0, Math.min(100, num(s.pct) > 1.5 ? num(s.pct) : num(s.pct) * 100)) || 0}%"></i></div>
+    <div class="muted">${esc([s.pct, s.left ? 'осталось ' + s.left : '', s.divNow ? 'дивиденды ' + s.divNow + (s.divTarget ? ' из ' + s.divTarget : '') : ''].filter(Boolean).join(' · '))}</div></div>`).join('') : empty('Акций нет');
+  $('milestones').innerHTML = S.milestones.length ? S.milestones.map(x => row(x.level, [x.status, x.left].filter(Boolean).join(' · '))).join('') : empty('Нет данных');
+  $('invest').innerHTML = rows(S.invest);
+
+  $('contract').innerHTML = rows(S.contract.filter(p => !/^(Текст|Строка|Начисление не записано)/.test(p[0])));
+  $('company').innerHTML = rows(S.company);
+  $('pendingH').hidden = $('pending').hidden = !S.pending.length;
+  $('pending').innerHTML = S.pending.map(p => `<div class="item"><div class="top"><span class="name">${esc(p.amount)} → ${esc(p.card)}</span></div>
+    <div class="muted">${esc(p.date)}${p.note ? ' · ' + esc(p.note) : ''}</div>
+    <div class="two" style="margin-top:6px"><input inputmode="decimal" placeholder="сколько пришло" id="got${p.row}"><button class="go" data-recv="${p.row}">Получил</button></div></div>`).join('');
+  document.querySelectorAll('[data-recv]').forEach(b => b.onclick = () => receive(Number(b.dataset.recv), b));
+  $('companyOps').innerHTML = S.companyOps.length ? S.companyOps.map(o => `<div class="item"><div class="top"><span class="name">${esc(o.type)}</span><span>${esc(o.amount)}</span></div><div class="muted">${esc([o.date, o.card, o.status, o.note].filter(Boolean).join(' · '))}</div></div>`).join('') : empty('Пусто');
+  $('contracts').innerHTML = S.contracts.length ? S.contracts.map(c => row(c.start + (c.end ? ' — ' + c.end : ' — сейчас'), [c.months ? c.months + ' мес.' : '', c.salary].filter(Boolean).join(' · '))).join('') : empty('Пусто');
+
+  $('reportTitle').textContent = S.month.title || 'Отчёт';
+  $('report').innerHTML = rows(S.report.filter(p => !/^(Текст для бота|Альбом)/.test(p[0])));
+  $('sheetLink').href = S.sheetUrl;
+  $('upd').textContent = 'Обновлено в ' + S.updated;
+
+  /* списки для форм */
+  const envNames = S.envelopes.map(e => e.name);
+  const tickers = [...new Set(S.stocks.map(s => s.ticker).concat(S.prices.map(p => p.ticker)))];
+  const lists = {
+    acc: ACC, accTr: ACC_TR, accExp: ACC_EXP, envNames,
+    piggyNames: S.piggy.map(p => p.name), tickers, tickersOpt: [''].concat(tickers),
+  };
+  document.querySelectorAll('select[data-list]').forEach(s => fillSelect(s, lists[s.dataset.list] || [], true));
+
+  const cats = [...new Set(S.categories.map(c => c.name).concat(envNames.map(n => '📦 ' + n), ['На судне', 'Другое']))];
+  const chips = document.querySelector('[data-chips="category"]');
+  const hid = chips.closest('form').elements.category;
+  if (!hid.value || cats.indexOf(hid.value) < 0) hid.value = cats[0] || 'Другое';
+  chips.innerHTML = cats.map(c => `<button type="button" class="${c === hid.value ? 'on' : ''}">${esc(c)}</button>`).join('');
+  chips.querySelectorAll('button').forEach(b => b.onclick = () => {
+    hid.value = b.textContent;
+    chips.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    if (tg) tg.HapticFeedback.selectionChanged();
+  });
+}
+
+/* ── действия ── */
+function confirmAsk(text) {
+  return new Promise(ok => {
+    if (tg && tg.showConfirm) tg.showConfirm(text, ok);
+    else ok(window.confirm(text));
+  });
+}
+
+async function act(action, payload, ask, btn) {
+  if (ask && !(await confirmAsk(ask))) return false;
+  if (btn) btn.disabled = true;
+  try {
+    const d = await api(action, payload);
+    S = d.state;
+    render();
+    toast(d.msg || 'Готово');
+    if (tg) tg.HapticFeedback.notificationOccurred('success');
+    return true;
+  } catch (e) {
+    toast('⚠️ ' + e.message, true);
+    if (tg) tg.HapticFeedback.notificationOccurred('error');
+    return false;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function buyWish(rowN) {
+  const w = S.wishes.find(x => x.row === rowN);
+  const acc = await chooseAccount('С какого счёта платил за «' + w.name + '»?');
+  if (!acc) return;
+  act('wishBuy', { row: rowN, account: acc }, 'Отметить «' + w.name + '» купленным за ' + w.price + '?');
+}
+
+function chooseAccount(title) {
+  return new Promise(ok => {
+    if (tg && tg.showPopup) {
+      tg.showPopup({ title: 'Счёт', message: title, buttons: ACC.map(a => ({ id: a, type: 'default', text: a })) }, id => ok(id || null));
+    } else ok(ACC[0]);
+  });
+}
+
+function receive(rowN, btn) {
+  const p = S.pending.find(x => x.row === rowN);
+  const got = $('got' + rowN).value.trim();
+  act('receive', { row: rowN, got: got }, 'Отметить, что на ' + p.card + ' пришло ' + (got ? '$' + got : p.amount) + '?', btn);
+}
+
+document.querySelectorAll('form[data-action]').forEach(f => {
+  f.addEventListener('submit', async e => {
+    e.preventDefault();
+    const payload = {};
+    new FormData(f).forEach((v, k) => payload[k] = String(v).trim());
+    const ok = await act(f.dataset.action, payload, f.dataset.confirm, f.querySelector('button.go'));
+    if (ok) {
+      f.querySelectorAll('input:not([type=hidden])').forEach(i => i.value = '');
+      document.activeElement && document.activeElement.blur();
+    }
+  });
+});
+
+/* ── вкладки ── */
+function showTab(name) {
+  if (!$('tab-' + name)) name = 'home';
+  document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === 'tab-' + name));
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => { showTab(b.dataset.tab); if (tg) tg.HapticFeedback.selectionChanged(); });
+
+/* ── старт ── */
+(async function start() {
+  if (tg) {
+    tg.ready();
+    tg.expand();
+    if (tg.setHeaderColor) try { tg.setHeaderColor('secondary_bg_color'); } catch (e) {}
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  document.querySelectorAll('input[type=date]').forEach(i => i.value = today);
+  const tab = new URLSearchParams(location.search).get('tab') || (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || 'home';
+  try {
+    const d = await api('state');
+    S = d.state;
+    $('loading').remove();
+    render();
+    showTab(tab);
+  } catch (e) {
+    $('loading').innerHTML = '⚠️ ' + esc(e.message) + '<br><br><button class="go" onclick="location.reload()">Повторить</button>';
+  }
+})();
+
+/* обновлять данные при возврате в приложение */
+document.addEventListener('visibilitychange', async () => {
+  if (document.hidden || !S) return;
+  try { const d = await api('state'); S = d.state; render(); } catch (e) {}
+});
+</script>
+</body>
+</html>
